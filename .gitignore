@@ -9,3 +9,8 @@
 *.cydsn/*.svd
 *.cydsn/*_timing.html
 *.cywrk.*
+*.cylib/*.cyprj.*
+*.cylib/*.cyversion
+*.cylib/CortexM3/
+Backup/
+ComponentUpdateLog.txt
