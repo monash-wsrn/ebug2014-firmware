@@ -14,3 +14,4 @@
 *.cylib/CortexM3/
 Backup/
 ComponentUpdateLog.txt
+*.pyc

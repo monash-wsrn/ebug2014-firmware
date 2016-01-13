@@ -6,6 +6,7 @@ extern "C"
 	#include "motors.h"
 	#include "power.h"
 	#include "LEDs.h"
+	#include "version.h"
 	volatile uint32 time;
 }
 #include "RF24.h"
@@ -96,7 +97,7 @@ static void nrf_isr()
 			case 0x02: //Firmware version
 				 //TODO think of a nice way to track this (eg use git describe to get a version string, but might be hard to automate with PSoC's build system)
 				{
-					char version[]="TODO: git version";
+					char version[]=GIT_VERSION;
 					uint32 len=sizeof(version)-1;
 					if(len>30) len=30;
 					memcpy(packet+1,version,len);
@@ -226,12 +227,7 @@ void Wireless_Start()
 	nrf.openReadingPipe(1,multicast_address);
 	nrf.setAutoAck(1,false); //do not ACK on multicast pipe
 	multicast_address[0]=0x00; //address to reply to multicast packets
-	nrf.openWritingPipe(multicast_address);
-	
-	{ //TODO this is for testing, remove (or maybe store last unicast address in EEPROM)
-		uint8 rx_address=0x19; //unicast
-		unicast_address_set=true,nrf.openReadingPipe(2,&rx_address);
-	}
+	nrf.openWritingPipe(multicast_address);	
 	
 	nrf.startListening();
 		
