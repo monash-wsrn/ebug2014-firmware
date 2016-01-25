@@ -31,4 +31,4 @@ class git_version(Operations):
     releasedir=None
     statfs=None
 
-fuse=FUSE(git_version(),'version',foreground=True,ro=True)
+fuse=FUSE(git_version(),'version',foreground=True,ro=True,nonempty=True)
