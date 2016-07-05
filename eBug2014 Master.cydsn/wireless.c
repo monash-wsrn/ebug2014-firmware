@@ -95,6 +95,7 @@ static void nrf_isr()
 				nrf.writeAckPayload(2,packet,9);
 				break;
 			case 0x02: //Firmware version
+				 //TODO think of a nice way to track this (eg use git describe to get a version string, but might be hard to automate with PSoC's build system)
 				{
 					char version[]=GIT_VERSION;
 					uint32 len=sizeof(version)-1;
