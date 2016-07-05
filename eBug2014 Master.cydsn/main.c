@@ -4,6 +4,7 @@
 #include "power.h"
 #include "wireless.h"
 #include "motors.h"
+#include "laser_receivers.h"
 
 int main()
 {
@@ -26,6 +27,7 @@ int main()
 	Motors_Start();
 	Wireless_Start();
 	Power_Start();
+	Receivers_Start();
 	
 	CyDelay(100); //give slave some time to start up
 	

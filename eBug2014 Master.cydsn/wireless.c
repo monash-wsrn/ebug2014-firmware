@@ -7,6 +7,8 @@ extern "C"
 	#include "power.h"
 	#include "LEDs.h"
 	#include "version.h"
+	#include "laser_receivers.h"
+	extern const unsigned short dB_LUT[32768];
 	volatile uint32 time;
 }
 #include "RF24.h"
@@ -18,7 +20,6 @@ static void SysTick_isr()
 {
 	time++;
 }
-
 
 static uint8 bump;
 static uint16 LS[16];
@@ -38,7 +39,6 @@ void link_rx_isr()
 			break;
 	}
 }
-
 
 volatile uint8 persist __attribute__((section(".noinit")));
 bool unicast_address_set=false;
@@ -194,6 +194,52 @@ static void nrf_isr()
 				break;
 			case 0x62: //Increase charge current
 				IDAC_Charge_Data_REG=packet[1];
+				break;
+			case 0x80: //Get received laser event
+				if(event_head==event_tail) //no new events
+					nrf.writeAckPayload(2,packet,1);
+				else
+				{
+					volatile event &e=event_buffer[event_tail];
+					uint32 state0=e.state0;
+					uint32 state1=e.state1;
+					uint32 length=e.length;
+					uint32 sensor_id=e.sensor_id;
+					event_tail++;
+
+					if((state0^state1)&(1<<15)) //F1 is more recent than F0
+					{
+						uint32 s=state0;
+						state0=state1;
+						state1=s;
+					}
+					state0&=0x7fff;
+					state1&=0x7fff;
+
+					uint32 pos0=dB_LUT[state0];
+					uint32 pos1=dB_LUT[state1];
+
+					uint32 id=pos1-pos0;
+					uint32 pos=2*pos0;
+					if(id&1)
+					{
+						id=1-id;
+						pos=2*pos1-1;
+						pos&=0xffff;
+					}
+					id&=0x7fff;
+					id/=2;
+					//TODO use another LUT to correct for different bit durations
+					
+					struct
+					{
+						uint16 pos,id;
+						uint8 length,sensor_id;
+					} d={(uint16)pos,(uint16)id,(uint8)length,(uint8)sensor_id};
+
+					memcpy(packet+1,&d,sizeof d);
+					nrf.writeAckPayload(2,packet,1+sizeof d);
+				}
 				break;
 			case 0xb3: //Forget unicast address
 				unicast_address_set=false,nrf.closeReadingPipe(2);
