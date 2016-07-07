@@ -36,7 +36,7 @@ static void power_sample()
 			CyDelay(1000);
 			hibernate();
 		}
-		//print_bot("%4dmV %4dmA   ",V,I);
+		print_bot("%4dmV %4dmA   ",V,I);
 		
 		int32 C=Power_data[2]+*ADC_OFFSET;
 		C/=512;

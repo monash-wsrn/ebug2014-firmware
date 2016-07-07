@@ -36,5 +36,7 @@ int main()
 	print_bot("                ");
 	CyExitCriticalSection(x);
 	
+	IDAC_Charge_Data_REG=64;
+	
 	for(;;) CY_PM_WFI;
 }
