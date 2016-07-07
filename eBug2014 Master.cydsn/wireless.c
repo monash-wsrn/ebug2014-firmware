@@ -241,6 +241,12 @@ static void nrf_isr()
 					nrf.writeAckPayload(2,packet,1+sizeof d);
 				}
 				break;
+			case 0x81: //Enable laser and motor
+			case 0x82: //Set laser sequence
+			case 0x83: //Set motor speed
+				while(link_TX_busy());
+				link_TX_copy(packet,n);
+				break;
 			case 0xb3: //Forget unicast address
 				unicast_address_set=false,nrf.closeReadingPipe(2);
 				break;
