@@ -21,10 +21,13 @@ void print_bot(const char *fmt, ...)
 	va_end(args);
 }
 
+__attribute__((section(".ram")))
 static void write_state(uint16 state0,uint16 state1)
 {
 	//TODO ensure state0&0x3fff != 0 and state1&0x3fff != 0 (this can load the wrong id)
 	//TODO if this happens, can step through both sequences until this is not the case (up to 4 times)
+	
+	CY_SYS_SYST_CVR_REG=0; //reset systick timer to synchronise to start of sequence
 	
 	//note: bit 14 is a flag that signals to shift bit 15 into the state instead of the external LSB register
 	*(reg16*)dBx2_dp_a__16BIT_F0_REG=state0>>1|state0<<15|1<<14;
@@ -72,15 +75,21 @@ static void rx_isr()
 			LEDB=packet[6];
 			break;
 		case 0x81: //Enable laser and motor
-			EXP_8_SetDriveMode(packet[1]&1?EXP_8_DM_OD_LO:EXP_8_DM_DIG_HIZ);
+			if(packet[1]&1) Laser_Opamp_Start();
+			else Laser_Opamp_Stop();
 			if(packet[1]&2) Motor_Opamp_Start();
 			else Motor_Opamp_Stop();
 			break;
 		case 0x82: //Set laser sequence
 			restart_sequence(*(uint16*)(packet+1));
+			Laser_Test_Control=0;
 			break;
 		case 0x83: //Set motor speed
 			Motor_DAC_SetValue(packet[1]);
+			break;
+		case 0x84: //Test laser at frequency
+			Laser_Test_CLK_SetDividerValue(packet[1]);
+			Laser_Test_Control=packet[1]!=0;
 			break;
 	}
 }
@@ -122,6 +131,14 @@ static void hibernate()
 	CyPmHibernate();
 }
 
+__attribute__((section(".ram")))
+static void motor_spike()
+{
+	uint32 time=CY_SYS_SYST_CVR_REG;
+	while(link_TX_busy());
+	link_TX_copy_header(0x90,(uint8*)&time,4);
+}
+
 int main()
 {
     CyGlobalIntEnable;
@@ -138,7 +155,7 @@ int main()
 	
 	link_Start();
 	link_rx_ready_StartEx(rx_isr);
-	
+		
 	ADC_Start();
 	ADC_SAR_CSR2_REG=ADC_SAR_RESOLUTION_12BIT|2;
 	{
@@ -159,26 +176,39 @@ int main()
 	LS_IDAC_Start();
 	
 	LCD_Start();
-	lcd_refresh_StartEx(LCD_Update);
 	
-//	CyMasterClk_SetSource(CY_MASTER_SOURCE_IMO);
-//	CyPLL_OUT_Stop();
-//	CyPLL_OUT_SetSource(CY_PLL_SOURCE_DSI);
-//	CyPLL_OUT_SetPQ(24,6,2);
-//	uint8 lock=CyPLL_OUT_Start(1)==CYRET_SUCCESS;
-//	if(lock) CyMasterClk_SetSource(CY_MASTER_SOURCE_PLL);
-//	else print_top("  No PLL lock!   ");
+	CyMasterClk_SetSource(CY_MASTER_SOURCE_IMO);
+	CyPLL_OUT_Stop();
+	CyPLL_OUT_SetSource(CY_PLL_SOURCE_DSI);
+	CyPLL_OUT_SetPQ(64,15,5);
+	CyIMO_SetFreq(CY_IMO_FREQ_62MHZ);
+	
+	uint8 lock=CyPLL_OUT_Start(1)==CYRET_SUCCESS;
+	if(lock)
+	{
+		CyMasterClk_SetSource(CY_MASTER_SOURCE_PLL);
+		CyIMO_SetFreq(CY_IMO_FREQ_3MHZ);
+	}
+	else
+	{
+		CyDelay(1000);
+		memcpy(LCD_Top,"  No PLL lock!   ",16);
+	}
 	
 	Motor_DAC_Start();
-	Motor_DAC_SetValue(208);
+	Motor_DAC_SetValue(160);
 	*(reg8*)FSK_TX_Count7__CONTROL_AUX_CTL_REG|=0x20;
+	
+	Motor_SH_Start();
+	Motor_Comp_Start();
+	Motor_Spike_Ref_Start();
+	Motor_Count7_Start();
+	CY_SYS_SYST_RVR_REG=(1<<16)*160-1; //systick period set to number of clocks in 16 cycles
+	CY_SYS_SYST_CSR_REG|=5; //enable systick and set source to bus clock
+	motor_spike_StartEx(motor_spike);
 	
 	restart_sequence(1000);
 	
-    for(;;)
-	{
-		CY_PM_WFI;
-		//LCD_Position(1,0);
-		//print("%3u %3u %3u %3u ",LS[2]/5,LS[6]/5,LS[10]/5,LS[14]/5);
-	}
+	lcd_refresh_StartEx(LCD_Update);
+    for(;;) CY_PM_WFI;
 }

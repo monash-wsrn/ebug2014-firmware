@@ -23,6 +23,10 @@ static void SysTick_isr()
 
 static uint8 bump;
 static uint16 LS[16];
+static uint32 motor_times[256];
+static uint8 motor_head=0;
+static uint8 motor_tail=0;
+
 __attribute__((section(".ram")))
 void link_rx_isr()
 {
@@ -36,6 +40,11 @@ void link_rx_isr()
 			break;
 		case 0x50: //Light sensors
 			if(l==33) memcpy(LS,packet+1,32);
+			break;
+		case 0x90: //Motor feedback
+			if(l==5)
+				if(motor_head+1!=motor_tail) //prevent overflows
+					motor_times[motor_head++]=*(uint32*)(packet+1);
 			break;
 	}
 }
@@ -244,8 +253,20 @@ static void nrf_isr()
 			case 0x81: //Enable laser and motor
 			case 0x82: //Set laser sequence
 			case 0x83: //Set motor speed
+			case 0x84: //Test laser at frequency
 				while(link_TX_busy());
-				link_TX_copy(packet,n);
+				link_TX_copy(packet,n); //forward packet to slave
+				break;
+			case 0x90: //Get motor feedback
+				{
+					uint32 n;
+					for(n=0;n<7&&motor_head!=motor_tail;n++)
+					{
+						((uint32*)(packet+1))[n]=motor_times[motor_tail];
+						motor_tail++;
+					}
+					nrf.writeAckPayload(2,packet,1+n*4);
+				}
 				break;
 			case 0xb3: //Forget unicast address
 				unicast_address_set=false,nrf.closeReadingPipe(2);
