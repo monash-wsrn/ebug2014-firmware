@@ -123,20 +123,25 @@ int main()
 	LS_IDAC_Start();
 	
 	LCD_Start();
-	lcd_refresh_StartEx(LCD_Update);
 	
-//	CyMasterClk_SetSource(CY_MASTER_SOURCE_IMO);
-//	CyPLL_OUT_Stop();
-//	CyPLL_OUT_SetSource(CY_PLL_SOURCE_DSI);
-//	CyPLL_OUT_SetPQ(24,6,2);
-//	uint8 lock=CyPLL_OUT_Start(1)==CYRET_SUCCESS;
-//	if(lock) CyMasterClk_SetSource(CY_MASTER_SOURCE_PLL);
-//	else print_top("  No PLL lock!   ");
+	CyMasterClk_SetSource(CY_MASTER_SOURCE_IMO);
+	CyPLL_OUT_Stop();
+	CyPLL_OUT_SetSource(CY_PLL_SOURCE_DSI);
+	CyPLL_OUT_SetPQ(64,15,5);
+	CyIMO_SetFreq(CY_IMO_FREQ_62MHZ);
 	
-    for(;;)
+	uint8 lock=CyPLL_OUT_Start(1)==CYRET_SUCCESS;
+	if(lock)
 	{
-		CY_PM_WFI;
-		//LCD_Position(1,0);
-		//print("%3u %3u %3u %3u ",LS[2]/5,LS[6]/5,LS[10]/5,LS[14]/5);
+		CyMasterClk_SetSource(CY_MASTER_SOURCE_PLL);
+		CyIMO_SetFreq(CY_IMO_FREQ_3MHZ);
 	}
+	else
+	{
+		CyDelay(1000);
+		memcpy(LCD_Top,"  No PLL lock!   ",16);
+	}
+	
+	lcd_refresh_StartEx(LCD_Update);
+    for(;;) CY_PM_WFI;
 }

@@ -53,7 +53,7 @@ static void nrf_isr()
 		
 		uint8 packet[32];
 		nrf.read(packet,n);
-		if(!n) return;
+		if(!n) continue;
 		
 		if(pipe==1) //multicast packet
 		{
@@ -200,6 +200,7 @@ static void nrf_isr()
 			case 0xff: //Reset to bootloader
 				persist=2;
 			case 0xfe: //Reset
+				nrf.setAutoAck(1,true); //restore autoack for bootloader (ideally the bootloader should do this on startup)
 				CySoftwareReset();
 		}
 	}
