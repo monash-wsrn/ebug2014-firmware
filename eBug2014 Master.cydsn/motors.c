@@ -1,6 +1,7 @@
 #include <project.h>
 #include "motors.h"
 
+
 static uint16 hall_buffer[2][20][4]; //double buffered
 
 __attribute__((section(".ram")))
@@ -25,8 +26,28 @@ static void hall_sample()
 	//	print("%5d %5d ",QuadHall_LeftCount,QuadHall_RightCount);
 }
 
+static void Motors_Controller()
+{
+	int L=arm_pid_q15(&Motors_PID_L,QuadHall_LeftCount-Motors_TargetL); //Run PID
+	int R=arm_pid_q15(&Motors_PID_R,QuadHall_RightCount-Motors_TargetR);
+	
+	L>>=5; //scale to 11 bits signed (arm_pid_q15 saturates to 16 bit range)
+	R>>=5;
+	
+	MotorDriver_SpeedL=L<0?-L:L; //Update speed
+	MotorDriver_SpeedR=R<0?-R:R;
+	MotorDriver_Mode=L>=0|(R>=0)<<2; //Update direction
+}
+
 void Motors_Start()
 {
+	Motors_PID_L.Kp=Motors_PID_R.Kp=1;
+	Motors_PID_L.Ki=Motors_PID_R.Ki=0;
+	Motors_PID_L.Kd=Motors_PID_R.Kd=0;
+	arm_pid_init_q15(&Motors_PID_L,0);
+	arm_pid_init_q15(&Motors_PID_R,0);
+	Motors_TargetL=Motors_TargetR=0;
+	
 	MotorDriver_Start();
 	boost_12V_EN_Write(1);
 	IDAC_12V_adjust_Start();
