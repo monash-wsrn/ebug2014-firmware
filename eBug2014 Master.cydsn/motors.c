@@ -1,7 +1,6 @@
 #include <project.h>
 #include "motors.h"
 
-
 static uint16 hall_buffer[2][20][4]; //double buffered
 
 __attribute__((section(".ram")))
@@ -26,28 +25,33 @@ static void hall_sample()
 	//	print("%5d %5d ",QuadHall_LeftCount,QuadHall_RightCount);
 }
 
-static void Motors_Controller()
+static int PID(Motor_PID *x,int16 current,int16 current_speed)
 {
-	int L=arm_pid_q15(&Motors_PID_L,QuadHall_LeftCount-Motors_TargetL); //Run PID
-	int R=arm_pid_q15(&Motors_PID_R,QuadHall_RightCount-Motors_TargetR);
+	int e=x->target-current;
+	int ei=x->ei;
+	int ed=x->target_speed-current_speed;
 	
-	L>>=5; //scale to 11 bits signed (arm_pid_q15 saturates to 16 bit range)
-	R>>=5;
+	ei+=e>>5; //TODO do integral better
+	ei=__SSAT(ei,16);
+	x->ei=ei;
+	
+	int a=x->P*e+x->I*ei+x->D*ed;
+	
+	return __SSAT(a>>5,11); //5 fractional bits, saturate to 11 bits (to match motor PWM resolution)
+}
+
+static void Motor_Controller()
+{
+	int L=PID(&Motor_PID_L,QuadHall_LeftCount,0); //TODO measure speed with a timer and pass to PID
+	int R=PID(&Motor_PID_R,QuadHall_RightCount,0);
 	
 	MotorDriver_SpeedL=L<0?-L:L; //Update speed
 	MotorDriver_SpeedR=R<0?-R:R;
-	MotorDriver_Mode=L>=0|(R>=0)<<2; //Update direction
+	MotorDriver_Mode=(L>=0)|(R>=0)<<2; //Update direction (and set slow decay mode)
 }
 
 void Motors_Start()
 {
-	Motors_PID_L.Kp=Motors_PID_R.Kp=1;
-	Motors_PID_L.Ki=Motors_PID_R.Ki=0;
-	Motors_PID_L.Kd=Motors_PID_R.Kd=0;
-	arm_pid_init_q15(&Motors_PID_L,0);
-	arm_pid_init_q15(&Motors_PID_R,0);
-	Motors_TargetL=Motors_TargetR=0;
-	
 	MotorDriver_Start();
 	boost_12V_EN_Write(1);
 	IDAC_12V_adjust_Start();
@@ -77,4 +81,10 @@ void Motors_Start()
 	
 	QuadHall_Sync();
 	ADC_Hall_Start();
+	
+	memset(&Motor_PID_L,0,sizeof Motor_PID_L);
+	memset(&Motor_PID_R,0,sizeof Motor_PID_R);
+	
+	Motor_Controller_SetVector(Motor_Controller);
+	Motor_Controller_SetPriority((uint8)Motor_Controller_INTC_PRIOR_NUMBER);
 }

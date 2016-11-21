@@ -677,9 +677,12 @@
       <Data key="08e54df8-16d0-4abf-9ae7-e21774b9b2bb" value="charge_started" />
       <Data key="33f75ba7-421a-4deb-9e5b-7a064b740362" value="nrf_packet" />
       <Data key="773723dd-4f28-41a4-a448-de315b28b93b" value="charged" />
-      <Data key="66980655-03c3-410e-87f0-d7787c844ca1" value="adc_done" />
+      <Data key="9480650f-2f8c-4a83-bbb5-bb757e71a87f" value="power_sample" />
+      <Data key="66980655-03c3-410e-87f0-d7787c844ca1" value="hall_sample" />
       <Data key="a0112deb-a10e-4596-ab66-a87cde103131" value="charge_finished" />
-      <Data key="dc23e117-1cd4-4b75-b19f-ea18177042bc/b73dcd38-4bce-4cd7-acec-33f53e91ccd6" value="ADC_IRQ" />
+      <Data key="dc23e117-1cd4-4b75-b19f-ea18177042bc/b73dcd38-4bce-4cd7-acec-33f53e91ccd6" value="ADC_Hall_IRQ" />
+      <Data key="e052da86-2586-4165-b88e-54e83e9019cf" value="Motor_Controller" />
+      <Data key="e6715fad-58b2-40f6-9083-626b6bb2f49a/b6592af9-e743-4dfd-a597-27f9102033ee" value="ADC_Power_IRQ" />
     </Group>
     <Group key="Pin">
       <Data key="0adce0a3-7179-4e17-ad68-895967eee5c2" value="LED_8B" />
@@ -2306,7 +2309,9 @@
     <Data key="01b554d8-c1af-4196-8294-32faf183dd9c" value="3" />
     <Data key="33f75ba7-421a-4deb-9e5b-7a064b740362" value="2" />
     <Data key="773723dd-4f28-41a4-a448-de315b28b93b" value="6" />
+    <Data key="9480650f-2f8c-4a83-bbb5-bb757e71a87f" value="6" />
     <Data key="66980655-03c3-410e-87f0-d7787c844ca1" value="4" />
+    <Data key="e052da86-2586-4165-b88e-54e83e9019cf" value="4" />
   </Group>
   <Group key="Pin2">
     <Group key="0adce0a3-7179-4e17-ad68-895967eee5c2">

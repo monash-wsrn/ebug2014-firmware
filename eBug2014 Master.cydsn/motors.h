@@ -2,10 +2,15 @@
 #define MOTORS_H
 
 #include <cytypes.h>
-#include "arm_math.h"
 void Motors_Start();
 
-arm_pid_instance_q15 Motors_PID_L,Motors_PID_R;
-int16 Motors_TargetL,Motors_TargetR;
+typedef struct
+{
+	int16 P,I,D;
+	int16 ei;
+	int16 target,target_speed;
+} Motor_PID;
+
+Motor_PID Motor_PID_L,Motor_PID_R;
 
 #endif

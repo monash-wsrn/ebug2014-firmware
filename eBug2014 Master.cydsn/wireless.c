@@ -131,7 +131,7 @@ static void nrf_isr()
 			case 0x23: //Get motor feedback and don't reset counters
 				*(int16*)(packet+1)=QuadHall_LeftCount; //2 bytes for left count
 				*(int16*)(packet+3)=QuadHall_RightCount; //2 bytes for right count
-				if(packet[0]==0x21)
+				if(packet[0]==0x22)
 				{
 					QuadHall_LeftCount=0;
 					QuadHall_RightCount=0;
@@ -143,6 +143,30 @@ static void nrf_isr()
 				//TODO should spin motors at some nominal speed and sample Hall sensors using ADC_Hall
 				//TODO adjust IDAC offsets until approximately centred
 				//TODO store offsets in EEPROM
+				break;
+			case 0x25: //Configure motor controller
+				if(n==2) //Enable/disable controller
+				{
+					if(packet[1]) Motor_Controller_Enable();
+					else Motor_Controller_Disable();
+				}
+				else //Configure PID parameters and enable
+				{
+					Motor_PID_L.P=Motor_PID_R.P=*(int16*)(packet+1);
+					Motor_PID_L.I=Motor_PID_R.I=*(int16*)(packet+3);
+					Motor_PID_L.D=Motor_PID_R.D=*(int16*)(packet+5);
+					
+					Motor_Controller_Enable();
+				}
+				break;
+			case 0x26: //Set motor controller target
+				Motor_PID_L.target=*(int16*)(packet+1);
+				Motor_PID_R.target=*(int16*)(packet+3);
+				break;
+			case 0x27: //Observe controller state
+				*(int16*)(packet+1)=MotorDriver_SpeedR;
+				*(int16*)(packet+3)=Motor_PID_R.ei;
+				nrf.writeAckPayload(2,packet,5);
 				break;
 			case 0x30: //Enable side/top LEDs and centre LEDs
 				LED_enable(packet[1]&1,packet[1]&2);
