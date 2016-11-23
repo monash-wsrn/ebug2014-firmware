@@ -168,6 +168,11 @@ static void nrf_isr()
 				*(int16*)(packet+3)=Motor_PID_R.ei;
 				nrf.writeAckPayload(2,packet,5);
 				break;
+			case 0x28: //Get motor speed
+				*(int16*)(packet+1)=QuadHall_LeftSpeed();
+				*(int16*)(packet+3)=QuadHall_RightSpeed();
+				nrf.writeAckPayload(2,packet,5);
+				break;
 			case 0x30: //Enable side/top LEDs and centre LEDs
 				LED_enable(packet[1]&1,packet[1]&2);
 				LED_centre_SetDriveMode(packet[1]&4?LED_centre_DM_STRONG:LED_centre_DM_DIG_HIZ);

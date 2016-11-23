@@ -1,28 +1,42 @@
 #include <project.h>
 #include "motors.h"
 
-static uint16 hall_buffer[2][20][4]; //double buffered
+static uint16 hall_buffer[2][64][4]; //double buffered
+static int16 hall_DC[4];
 
 __attribute__((section(".ram")))
 static void hall_sample()
 {
-	static uint8 decimate=1;
-	decimate++;
-	decimate%=100;
-	uint8 which=decimate%2; //which buffer
+	static uint8 which=1;
+	which^=1;
 	
-	int32 x1=0,y1=0,x2=0,y2=0;
+	static int p=0;
+	p++;
+	p%=64;
 	
-	uint16 i;
-	for(i=0;i<20;i++)
+	static uint16 max_ring[64][4];
+	static uint16 min_ring[64][4];
+	
+	int i,j;
+	for(i=0;i<4;i++)
 	{
-		x1+=hall_buffer[which][i][0]-2048;
-		y1+=hall_buffer[which][i][1]-2048;
-		x2+=hall_buffer[which][i][2]-2048;
-		y2+=hall_buffer[which][i][3]-2048;
+		max_ring[p][i]=0;
+		min_ring[p][i]=4096;
+		for(j=0;j<64;j++)
+		{
+			uint16 x=hall_buffer[which][j][i];
+			if(x>max_ring[p][i]) max_ring[p][i]=x;
+			if(x<min_ring[p][i]) min_ring[p][i]=x;
+		}
+		uint16 max=0;
+		uint16 min=4096;
+		for(j=0;j<64;j++)
+		{
+			if(max_ring[j][i]>max) max=max_ring[j][i];
+			if(min_ring[j][i]<min) min=min_ring[j][i];
+		}
+		hall_DC[i]=max+min-4096;
 	}
-	//if(decimate==0) //print("%3d %3d %3d %3d ",x1/410,y1/410,x2/410,y2/410);
-	//	print("%5d %5d ",QuadHall_LeftCount,QuadHall_RightCount);
 }
 
 static int PID(Motor_PID *x,int16 current,int16 current_speed)
@@ -42,8 +56,10 @@ static int PID(Motor_PID *x,int16 current,int16 current_speed)
 
 static void Motor_Controller()
 {
-	int L=PID(&Motor_PID_L,QuadHall_LeftCount,0); //TODO measure speed with a timer and pass to PID
-	int R=PID(&Motor_PID_R,QuadHall_RightCount,0);
+	int Lspeed=(1<<16)/QuadHall_LeftSpeed(); //QuadHall actually measures motor period (reciprocal of speed)
+	int Rspeed=(1<<16)/QuadHall_RightSpeed();
+	int L=PID(&Motor_PID_L,QuadHall_LeftCount,Lspeed);
+	int R=PID(&Motor_PID_R,QuadHall_RightCount,Rspeed);
 	
 	MotorDriver_SpeedL=L<0?-L:L; //Update speed
 	MotorDriver_SpeedR=R<0?-R:R;
@@ -62,25 +78,26 @@ void Motors_Start()
 	QuadHall_Start();
 	//QuadHall_SetOffsets(128|27,128|31,128|40,128|16); //offsets use 1-bit sign, 7-bit magnitude format (not 2's complement)
 	QuadHall_SetOffsets(0,0,0,0);
-	QuadHall_TIA_SetResFB(QuadHall_TIA_RES_FEEDBACK_250K);
+	//QuadHall_TIA_SetResFB(QuadHall_TIA_RES_FEEDBACK_20K);
 	
-	//TODO ADC_Hall is only really needed for calibration (we use the comparators and quadrature encoders to track motor position)
-	
-	uint8 ch=DMA_Hall_DmaInitialize(2,1,HI16(CYDEV_PERIPH_BASE),HI16(CYDEV_SRAM_BASE));
-	uint8 td0=CyDmaTdAllocate();
-	uint8 td1=CyDmaTdAllocate();
-	CyDmaTdSetConfiguration(td0,sizeof hall_buffer[0],td1,CY_DMA_TD_INC_DST_ADR|DMA_Hall__TD_TERMOUT_EN);
-	CyDmaTdSetConfiguration(td1,sizeof hall_buffer[1],td0,CY_DMA_TD_INC_DST_ADR|DMA_Hall__TD_TERMOUT_EN);
-	CyDmaTdSetAddress(td0,(uint16)(uint32)ADC_Hall_SAR_WRK0_PTR,(uint32)hall_buffer[0]);
-	CyDmaTdSetAddress(td1,(uint16)(uint32)ADC_Hall_SAR_WRK0_PTR,(uint32)hall_buffer[1]);
-	CyDmaChSetInitialTd(ch,td0);
-	
-	hall_sample_StartEx(hall_sample);
-	
-	CyDmaChEnable(ch,1);
-	
-	QuadHall_Sync();
-	ADC_Hall_Start();
+	if(0) //TODO ADC_Hall is only really needed for calibration (we use the comparators and quadrature encoders to track motor position)
+	{
+		uint8 ch=DMA_Hall_DmaInitialize(2,1,HI16(CYDEV_PERIPH_BASE),HI16(CYDEV_SRAM_BASE));
+		uint8 td0=CyDmaTdAllocate();
+		uint8 td1=CyDmaTdAllocate();
+		CyDmaTdSetConfiguration(td0,sizeof hall_buffer[0],td1,CY_DMA_TD_INC_DST_ADR|DMA_Hall__TD_TERMOUT_EN);
+		CyDmaTdSetConfiguration(td1,sizeof hall_buffer[1],td0,CY_DMA_TD_INC_DST_ADR|DMA_Hall__TD_TERMOUT_EN);
+		CyDmaTdSetAddress(td0,(uint16)(uint32)ADC_Hall_SAR_WRK0_PTR,(uint32)hall_buffer[0]);
+		CyDmaTdSetAddress(td1,(uint16)(uint32)ADC_Hall_SAR_WRK0_PTR,(uint32)hall_buffer[1]);
+		CyDmaChSetInitialTd(ch,td0);
+		
+		hall_sample_StartEx(hall_sample);
+		
+		CyDmaChEnable(ch,1);
+		
+		QuadHall_Sync();
+		ADC_Hall_Start();
+	}
 	
 	memset(&Motor_PID_L,0,sizeof Motor_PID_L);
 	memset(&Motor_PID_R,0,sizeof Motor_PID_R);
