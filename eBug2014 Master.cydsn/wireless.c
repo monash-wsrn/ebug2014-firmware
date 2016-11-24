@@ -163,12 +163,7 @@ static void nrf_isr()
 				Motor_PID_L.target=*(int16*)(packet+1);
 				Motor_PID_R.target=*(int16*)(packet+3);
 				break;
-			case 0x27: //Observe controller state
-				*(int16*)(packet+1)=MotorDriver_SpeedR;
-				*(int16*)(packet+3)=Motor_PID_R.ei;
-				nrf.writeAckPayload(2,packet,5);
-				break;
-			case 0x28: //Get motor speed
+			case 0x27: //Get motor speed
 				*(int16*)(packet+1)=QuadHall_LeftSpeed();
 				*(int16*)(packet+3)=QuadHall_RightSpeed();
 				nrf.writeAckPayload(2,packet,5);

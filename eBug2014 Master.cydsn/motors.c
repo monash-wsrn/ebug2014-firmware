@@ -45,13 +45,13 @@ static int PID(Motor_PID *x,int16 current,int16 current_speed)
 	int ei=x->ei;
 	int ed=x->target_speed-current_speed;
 	
-	ei+=e>>5; //TODO do integral better
-	ei=__SSAT(ei,16);
+	ei+=(x->I*e)>>6; //store integral of I*e (6 fractional bits)
+	ei=__SSAT(ei,15); //limit effect of I to half of max
 	x->ei=ei;
 	
-	int a=x->P*e+x->I*ei+x->D*ed;
+	int a=x->P*e+ei+x->D*ed;
 	
-	return __SSAT(a>>5,11); //5 fractional bits, saturate to 11 bits (to match motor PWM resolution)
+	return __SSAT(a>>6,10); //6 fractional bits, saturate to 10 bits (limit motor speed to half of maximum)
 }
 
 static void Motor_Controller()
@@ -78,7 +78,6 @@ void Motors_Start()
 	QuadHall_Start();
 	//QuadHall_SetOffsets(128|27,128|31,128|40,128|16); //offsets use 1-bit sign, 7-bit magnitude format (not 2's complement)
 	QuadHall_SetOffsets(0,0,0,0);
-	//QuadHall_TIA_SetResFB(QuadHall_TIA_RES_FEEDBACK_20K);
 	
 	if(0) //TODO ADC_Hall is only really needed for calibration (we use the comparators and quadrature encoders to track motor position)
 	{
