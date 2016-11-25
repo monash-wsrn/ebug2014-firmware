@@ -152,9 +152,12 @@ static void nrf_isr()
 				}
 				else //Configure PID parameters and enable
 				{
-					Motor_PID_L.P=Motor_PID_R.P=*(int16*)(packet+1);
-					Motor_PID_L.I=Motor_PID_R.I=*(int16*)(packet+3);
-					Motor_PID_L.D=Motor_PID_R.D=*(int16*)(packet+5);
+					Motor_PID_L.P=*(int16*)(packet+1);
+					Motor_PID_L.I=*(int16*)(packet+3);
+					Motor_PID_L.D=*(int16*)(packet+5);
+					Motor_PID_R.P=*(int16*)(packet+7);
+					Motor_PID_R.I=*(int16*)(packet+9);
+					Motor_PID_R.D=*(int16*)(packet+11);
 					
 					Motor_Controller_Enable();
 				}
