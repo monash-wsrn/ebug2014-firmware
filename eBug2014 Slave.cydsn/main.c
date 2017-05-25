@@ -38,6 +38,9 @@ static void rx_isr()
 		case 0x12: //LCD backlight control
 			LCD_Backlight_Write(!packet[1]); //active low
 			break;
+		case 0x13: //LCD contrast constrol
+			LCD_Contrast_WriteCompare(packet[1]);
+			break;
 		case 0x30: //Centre LED control
 			LED_centre_SetDriveMode(packet[1]&8?LED_centre_DM_STRONG:LED_centre_DM_DIG_HIZ);
 			break;
@@ -123,6 +126,7 @@ int main()
 	LS_IDAC_Start();
 	
 	LCD_Start();
+	LCD_Contrast_Start();
 	
 	CyMasterClk_SetSource(CY_MASTER_SOURCE_IMO);
 	CyPLL_OUT_Stop();

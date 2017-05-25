@@ -114,6 +114,7 @@ static void nrf_isr()
 				print_bot("%s",packet+1);
 				break;
 			case 0x12: //LCD backlight control
+			case 0x13: //LCD contrast control
 				while(link_TX_busy());
 				link_TX_copy(packet,n);
 				break;
