@@ -3,8 +3,7 @@
 #include <project.h>
 
 void `$INSTANCE_NAME`_Start();
-void `$INSTANCE_NAME`_SetOffsets(uint8 X1,uint8 Y1,uint8 X2,uint8 Y2);
-void `$INSTANCE_NAME`_Sync();
+void `$INSTANCE_NAME`_SetOffsets(uint16 X1,uint16 Y1,uint16 X2,uint16 Y2);
 int `$INSTANCE_NAME`_LeftSpeed();
 int `$INSTANCE_NAME`_RightSpeed();
 
