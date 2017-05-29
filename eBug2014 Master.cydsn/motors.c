@@ -38,12 +38,53 @@ void Motors_Start()
 	
 	Opamp_Hall_Start();
 	QuadHall_Start();
-	uint16 z=60|-60<<8;
-	QuadHall_SetOffsets(z,z,z,z);
+	//QuadHall_SetOffsets(0,0,0,0); //TODO read from EEPROM
+	Hall_Calibrate(40);
 	
 	memset(&Motor_PID_L,0,sizeof Motor_PID_L);
 	memset(&Motor_PID_R,0,sizeof Motor_PID_R);
 	
 	Motor_Controller_SetVector(Motor_Controller);
 	Motor_Controller_SetPriority((uint8)Motor_Controller_INTC_PRIOR_NUMBER);
+}
+
+void Hall_Calibrate(uint8 hyst)
+{
+	uint32 i;
+	
+	int16 offset[4]={0,0,0,0};
+	QuadHall_SetOffsets(offset[0],offset[1],offset[2],offset[3]);
+	QuadHall_SetOffsets(offset[0],offset[1],offset[2],offset[3]);
+	uint32 initial=Hall_Status;
+	uint32 calibrating=0xf;
+	while(calibrating)
+	{
+		QuadHall_SetOffsets(offset[0],offset[1],offset[2],offset[3]);
+		QuadHall_SetOffsets(offset[0],offset[1],offset[2],offset[3]); //set offsets twice to ensure outputs have updated
+		uint32 current=Hall_Status;
+		calibrating&=~initial^current; //if we've crossed the threshold, stop adjusting
+		
+		for(i=0;i<4;i++) if(calibrating&1<<i)
+		{
+			if(current&1<<i)
+			{
+				if(offset[i]>>8>-127+hyst) offset[i]-=0x101; //comparator is high, reduce offset
+				else calibrating&=~1<<i; //limit reached, give up
+			}
+			else
+			{
+				if(offset[i]>>8<127-hyst) offset[i]+=0x101;  //comparator is low, increase offset
+				else calibrating&=~1<<i; //limit reached, give up
+			}
+		}
+	}
+	
+	for(i=0;i<4;i++) //add hysteresis to offsets
+	{
+		int32 o=offset[i]>>8;
+		offset[i]=(uint8)(o+hyst)|(o-hyst)<<8;
+	}
+	
+	//TODO write offsets to EEPROM
+	QuadHall_SetOffsets(offset[0],offset[1],offset[2],offset[3]);
 }

@@ -139,11 +139,8 @@ static void nrf_isr()
 				}
 				nrf.writeAckPayload(2,packet,5); //send as ACK payload for pipe 1
 				break;
-			case 0x24: //Calibrate Hall effect sensors
-				//TODO write calibration function
-				//TODO should spin motors at some nominal speed and sample Hall sensors using ADC_Hall
-				//TODO adjust IDAC offsets until approximately centred
-				//TODO store offsets in EEPROM
+			case 0x24: //Calibrate Hall effect sensors and set hysteresis
+				Hall_Calibrate(packet[1]);
 				break;
 			case 0x25: //Configure motor controller
 				if(n==2) //Enable/disable controller

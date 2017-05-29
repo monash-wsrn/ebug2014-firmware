@@ -3,6 +3,7 @@
 
 #include <cytypes.h>
 void Motors_Start();
+void Hall_Calibrate(uint8 hyst);
 
 typedef struct
 {

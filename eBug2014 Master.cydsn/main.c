@@ -36,14 +36,5 @@ int main()
 	
 	IDAC_Charge_Data_REG=64;
 	
-	uint16 z=60|-60<<8;
-	for(;;)
-	{
-		if(buttons_Status&1) z-=0xff;
-		if(buttons_Status&2) z+=0xff;
-		QuadHall_SetOffsets(z,z,z,z);
-		CyDelay(10);
-	}
-	
 	for(;;) CY_PM_WFI;
 }
