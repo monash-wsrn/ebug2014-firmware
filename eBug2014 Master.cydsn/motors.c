@@ -38,8 +38,10 @@ void Motors_Start()
 	
 	Opamp_Hall_Start();
 	QuadHall_Start();
-	//QuadHall_SetOffsets(0,0,0,0); //TODO read from EEPROM
-	Hall_Calibrate(40);
+	EEPROM_Start();
+	CyDelayUs(5);
+	static const int16 *offset=(int16*)(CYDEV_EE_BASE+2);
+	QuadHall_SetOffsets(offset[0],offset[1],offset[2],offset[3]);
 	
 	memset(&Motor_PID_L,0,sizeof Motor_PID_L);
 	memset(&Motor_PID_R,0,sizeof Motor_PID_R);
@@ -79,12 +81,14 @@ void Hall_Calibrate(uint8 hyst)
 		}
 	}
 	
+	EEPROM_UpdateTemperature();
 	for(i=0;i<4;i++) //add hysteresis to offsets
 	{
 		int32 o=offset[i]>>8;
+		EEPROM_WriteByte(o+hyst,2+2*i);
+		EEPROM_WriteByte(o-hyst,3+2*i);
 		offset[i]=(uint8)(o+hyst)|(o-hyst)<<8;
 	}
 	
-	//TODO write offsets to EEPROM
 	QuadHall_SetOffsets(offset[0],offset[1],offset[2],offset[3]);
 }
